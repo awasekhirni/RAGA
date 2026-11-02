@@ -1,1 +1,1278 @@
-
+[
+  {
+    "algorithm_name": "Naive RAG / Basic Retrieve-Generate Pipeline",
+    "category": "Foundational - Retrieval & Generation",
+    "eli5": "The simplest recipe: chop text into pieces, find the pieces most similar to your question, and feed them to the AI to write an answer.",
+    "purpose": "Establish a baseline retrieval-augmented generation pipeline by mapping unstructured text to dense vector embeddings for semantic similarity search.",
+    "input_dataset": "Unstructured text documents, PDFs, or web pages.",
+    "usecase_scenarios": [
+      "Simple internal FAQ bots",
+      "Basic document Q&A for small knowledge bases",
+      "Rapid prototyping and MVP development"
+    ],
+    "outcome": "Context-aware LLM responses grounded in the most semantically similar retrieved text chunks.",
+    "benchmark_metrics": [
+      "Context Recall and Precision",
+      "Faithfulness (Hallucination rate)",
+      "Answer Relevancy"
+    ],
+    "metadata": {
+      "frameworks_classes": [
+        "LangChain RetrievalQA",
+        "LlamaIndex VectorStoreIndex",
+        "ChromaDB / Pinecone / Milvus"
+      ],
+      "key_hyperparameters": [
+        "chunk_size",
+        "chunk_overlap",
+        "top_k_retrieval",
+        "embedding_model_dimension"
+      ],
+      "computational_complexity": "O(N) for indexing, O(log N) for vector search, O(1) for generation",
+      "pros": [
+        "Extremely fast to implement and deploy",
+        "Low infrastructure and compute costs",
+        "Works surprisingly well for simple, direct queries"
+      ],
+      "cons": [
+        "Highly sensitive to chunk boundaries (loss of context)",
+        "Fails on complex, multi-context, or ambiguous queries",
+        "No mechanism to verify if retrieved context is actually relevant"
+      ],
+      "implementation_guide": "1) Automate ingestion using semantic chunkers instead of fixed-size splits. 2) Use Ragas or DeepEval to automatically benchmark the baseline. 3) For open-source deployments, host the embedding model on local NPUs for cost-effective inference.",
+      "dependencies": [
+        "Dense Embedding Model",
+        "Vector Database",
+        "LLM API"
+      ],
+      "related_algorithms": [
+        "Advanced RAG",
+        "Hybrid RAG"
+      ],
+      "model_specific_optimizations": {
+        "deepseek": "DeepSeek-V3 for generation; its strong instruction following makes it highly robust to slightly noisy naive retrieval contexts.",
+        "qwen": "Qwen2.5-7B-Instruct is the perfect open-source model to run locally for the generation step, offering enterprise-grade quality at a fraction of the cost.",
+        "kimi": "Kimi's native long context means you can often skip Naive RAG entirely and just pass the whole document if it's under 128k tokens.",
+        "z_ai": "GLM-4-Flash provides ultra-low latency for the generation step, making Naive RAG feel instantaneous for high-throughput internal tools."
+      },
+      "references": [
+        "Lewis et al. 2020 'Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks'"
+      ],
+      "code_snippet": "from llama_index.core import VectorStoreIndex, SimpleDirectoryReader\ndocuments = SimpleDirectoryReader('./data').load_data()\nindex = VectorStoreIndex.from_documents(documents, chunk_size=512)\nquery_engine = index.as_query_engine(similarity_top_k=3)\nresponse = query_engine.query('What is the core concept?')",
+      "maturity_level": "Production-Ready"
+    },
+    "index": 1
+  },
+  {
+    "algorithm_name": "Advanced RAG / Optimized Retrieve-Generate Pipeline",
+    "category": "Production-Optimized - Pre/Post Retrieval",
+    "eli5": "Upgrades the basic recipe by cleaning up the question before searching, filtering out bad results, and squishing the good results to save space.",
+    "purpose": "Maximize retrieval precision and generation quality in production by applying pre-retrieval, retrieval, and post-retrieval optimizations.",
+    "input_dataset": "Unstructured documents with rich metadata.",
+    "usecase_scenarios": [
+      "Enterprise search where accuracy is critical",
+      "Noisy document repositories",
+      "Regulated industries requiring strict metadata filtering"
+    ],
+    "outcome": "Highly precise, context-compressed inputs to the LLM, drastically reducing hallucinations and token costs.",
+    "benchmark_metrics": [
+      "MRR (Mean Reciprocal Rank)",
+      "NDCG",
+      "Token compression ratio without faithfulness loss"
+    ],
+    "metadata": {
+      "frameworks_classes": [
+        "LangChain ContextualCompression",
+        "Cohere Rerank / BGE-Reranker",
+        "LlamaIndex QueryTransformations"
+      ],
+      "key_hyperparameters": [
+        "reranker_top_n",
+        "compression_target_tokens",
+        "query_expansion_n_queries"
+      ],
+      "computational_complexity": "O(N) for retrieval + O(K log K) for re-ranking + O(C) for compression",
+      "pros": [
+        "Significantly boosts retrieval accuracy",
+        "Reduces LLM context window usage via compression",
+        "Handles edge-case queries gracefully"
+      ],
+      "cons": [
+        "Increases end-to-end latency",
+        "Requires tuning multiple models",
+        "Higher infrastructure footprint"
+      ],
+      "implementation_guide": "1) Use DSPy to automatically optimize query rewriting prompts. 2) Automate re-ranker selection via A/B testing. 3) Implement LongLLMLingua for automated context compression. 4) Deploy BGE-Reranker on local infrastructure to avoid external API dependencies.",
+      "dependencies": [
+        "Cross-Encoder or ColBERT Re-ranker",
+        "Context Compression Model",
+        "Query Rewriting LLM"
+      ],
+      "related_algorithms": [
+        "Naive RAG",
+        "Hybrid RAG"
+      ],
+      "model_specific_optimizations": {
+        "deepseek": "DeepSeek-R1's extended thinking can be used as the 'query rewriter' to deeply analyze and decompose complex user queries before retrieval.",
+        "qwen": "Qwen2.5-14B makes an excellent, highly efficient local re-ranker and query rewriter, keeping the entire Advanced RAG pipeline on-premise.",
+        "kimi": "Kimi's massive context allows you to skip the compression step entirely; just pass the top 20 raw chunks to Kimi and let it figure it out.",
+        "z_ai": "GLM-4's strong bilingual capabilities make it ideal for Advanced RAG in mixed-language enterprise environments."
+      },
+      "references": [
+        "Gao et al. 2023 'Retrieval-Augmented Generation for Large Language Models: A Survey'"
+      ],
+      "code_snippet": "from llama_index.postprocessor import LongLLMLingua, SentenceTransformerRerank\nreranker = SentenceTransformerRerank(top_n=5, model='BAAI/bge-reranker-v2-m3')\ncompressor = LongLLMLingua(target_tokens=1024)\nquery_engine = index.as_query_engine(node_postprocessors=[reranker, compressor], similarity_top_k=20)",
+      "maturity_level": "Production-Ready"
+    },
+    "index": 2
+  },
+  {
+    "algorithm_name": "Hybrid RAG / Dual-Index Semantic-Lexical Search",
+    "category": "Retrieval-Optimized - Indexing & Search",
+    "eli5": "Searches for both the exact words you typed and the general meaning of your question, then combines the best matches from both.",
+    "purpose": "Overcome the limitations of pure dense vector search by fusing lexical (BM25) and semantic (dense) retrieval.",
+    "input_dataset": "Unstructured text containing specific identifiers, error codes, SKUs, or technical jargon.",
+    "usecase_scenarios": [
+      "Technical support bots searching for specific error codes",
+      "E-commerce product search",
+      "Legal and medical document retrieval"
+    ],
+    "outcome": "A unified, highly relevant set of documents capturing both exact keyword matches and conceptual semantic similarities.",
+    "benchmark_metrics": [
+      "Recall@K for exact match queries",
+      "Precision@K for semantic queries",
+      "RRF score distribution"
+    ],
+    "metadata": {
+      "frameworks_classes": [
+        "Elasticsearch / OpenSearch",
+        "Weaviate Hybrid Search",
+        "Qdrant Hybrid Search"
+      ],
+      "key_hyperparameters": [
+        "bm25_weight",
+        "vector_weight",
+        "rrf_k_constant"
+      ],
+      "computational_complexity": "O(N) for BM25 + O(log N) for Vector Search + O(K) for fusion",
+      "pros": [
+        "Solves the 'out of vocabulary' weakness of pure vector DBs",
+        "Massively improves recall for specific queries",
+        "Robust against embedding model blind spots"
+      ],
+      "cons": [
+        "Requires maintaining two index structures",
+        "Tuning fusion weights can be tricky",
+        "Higher storage requirements"
+      ],
+      "implementation_guide": "1) Automate weight tuning using Bayesian Optimization on a validation set. 2) Use Qdrant or Weaviate to automate hybrid search natively. 3) Implement automated query classification to dynamically adjust weights.",
+      "dependencies": [
+        "Sparse Embedding Model or BM25 Index",
+        "Dense Vector Index",
+        "Score Fusion Engine"
+      ],
+      "related_algorithms": [
+        "Advanced RAG",
+        "Graph RAG"
+      ],
+      "model_specific_optimizations": {
+        "deepseek": "DeepSeek handles hybrid context exceptionally well. Instruct it via system prompt to prioritize exact matches for IDs and semantic matches for concepts.",
+        "qwen": "Qwen2.5's strong multilingual tokenizer ensures that BM25 lexical matching works flawlessly across CJK and Latin scripts simultaneously.",
+        "kimi": "Kimi's long context makes Hybrid RAG highly effective when searching across thousands of distinct documents.",
+        "z_ai": "GLM-4's function calling can dynamically decide whether to execute a pure SQL/BM25 exact match or a Vector semantic search."
+      },
+      "references": [
+        "Luan et al. 2021 'Generalized Product Quantization Network for Semantic Retrieval'"
+      ],
+      "code_snippet": "from qdrant_client import QdrantClient\nclient = QdrantClient(url='localhost')\nhits = client.query_points(collection_name='my_docs', query='Error 0x80040154', using='hybrid', limit=10)",
+      "maturity_level": "Production-Ready"
+    },
+    "index": 3
+  },
+  {
+    "algorithm_name": "Multi-hop RAG / Iterative Sequential Retrieval",
+    "category": "Reasoning-Optimized - Complex Query Resolution",
+    "eli5": "Instead of trying to answer a hard question all at once, the AI breaks it down into smaller questions, answers them one by one, and pieces the answers together.",
+    "purpose": "Resolve complex, multi-step queries that require retrieving and synthesizing information from multiple disparate documents.",
+    "input_dataset": "Large, diverse document collections where answers are distributed across multiple sources.",
+    "usecase_scenarios": [
+      "Comparative analysis across different entities",
+      "Complex investigative queries",
+      "Multi-document summarization"
+    ],
+    "outcome": "Comprehensive, logically deduced answers connecting information across multiple retrieval hops.",
+    "benchmark_metrics": [
+      "Multi-hop QA accuracy",
+      "Hop completion rate",
+      "Logical consistency score"
+    ],
+    "metadata": {
+      "frameworks_classes": [
+        "LangGraph",
+        "LlamaIndex SubQuestionQueryEngine",
+        "DSPy"
+      ],
+      "key_hyperparameters": [
+        "max_hops",
+        "decomposition_prompt_template",
+        "intermediate_context_window"
+      ],
+      "computational_complexity": "O(H * (N + L)) where H is hops",
+      "pros": [
+        "Solves complex reasoning tasks that fail in single-hop RAG",
+        "Mimics human analytical research behavior",
+        "Highly accurate for comparative queries"
+      ],
+      "cons": [
+        "Very high latency and API costs",
+        "Prone to error propagation",
+        "Complex to debug"
+      ],
+      "implementation_guide": "1) Use LangGraph to automate the state machine for multi-hop reasoning. 2) Implement DSPy's multi_hop optimizer to tune decomposition prompts. 3) Add an automated 'confidence check' at each hop to trigger self-correction.",
+      "dependencies": [
+        "Query Decomposer LLM",
+        "Iterative Retriever",
+        "State Management"
+      ],
+      "related_algorithms": [
+        "Agentic RAG",
+        "Graph RAG"
+      ],
+      "model_specific_optimizations": {
+        "deepseek": "DeepSeek-R1 is the undisputed king of Multi-hop RAG. Its extended thinking allows it to explicitly plan the hops, evaluate intermediate results, and correct its own reasoning path natively.",
+        "qwen": "Qwen2.5-72B-Instruct provides excellent multi-hop reasoning capabilities and can be hosted locally to avoid high API costs.",
+        "kimi": "Kimi's 'Kimi Explorer' feature natively performs deep, multi-hop web and document search, making it a turnkey solution.",
+        "z_ai": "GLM-4's strong logical reasoning and tool-use capabilities allow it to reliably chain multiple retrieval tools without losing the thread."
+      },
+      "references": [
+        "Xiong et al. 2022 'Answering Complex Open-domain Questions Through Iterative Query Generation'"
+      ],
+      "code_snippet": "from llama_index.core.query_engine import SubQuestionQueryEngine\nfrom llama_index.core.tools import QueryEngineTool\ntools = [QueryEngineTool.from_defaults(qe, description='...') for qe in engines]\nmulti_hop_engine = SubQuestionQueryEngine.from_defaults(query_engine_tools=tools)\nresponse = multi_hop_engine.query('Compare Q1 and Q2 revenues')",
+      "maturity_level": "Emerging"
+    },
+    "index": 4
+  },
+  {
+    "algorithm_name": "Graph RAG / Knowledge Graph-Augmented Retrieval",
+    "category": "Structure-Optimized - Relational Retrieval",
+    "eli5": "Instead of just looking at text, it builds a map of 'who/what is connected to whom' and uses that map to find answers about relationships and dependencies.",
+    "purpose": "Retrieve and reason over complex, interconnected data by leveraging knowledge graphs rather than relying solely on raw text similarity.",
+    "input_dataset": "Unstructured text that can be parsed into entities and relationships.",
+    "usecase_scenarios": [
+      "Supply chain and dependency mapping",
+      "Organizational and hierarchical queries",
+      "Biological pathways synthesis"
+    ],
+    "outcome": "Answers that accurately reflect structural dependencies, hierarchies, and global community contexts.",
+    "benchmark_metrics": [
+      "Graph traversal accuracy",
+      "Community summary comprehensiveness",
+      "Relationship extraction F1 score"
+    ],
+    "metadata": {
+      "frameworks_classes": [
+        "LlamaIndex PropertyGraphIndex",
+        "Neo4j",
+        "Microsoft GraphRAG",
+        "FalkorDB"
+      ],
+      "key_hyperparameters": [
+        "entity_extraction_prompt",
+        "community_detection_resolution",
+        "graph_traversal_depth"
+      ],
+      "computational_complexity": "O(N * L) for graph extraction, O(V + E) for traversal",
+      "pros": [
+        "Unmatched at reasoning over relationships and dependencies",
+        "Provides global context via community summaries",
+        "Highly explainable and auditable"
+      ],
+      "cons": [
+        "Extremely high initial compute cost for graph extraction",
+        "Entity extraction can be noisy",
+        "Requires specialized graph database knowledge"
+      ],
+      "implementation_guide": "1) Automate graph construction using LlamaIndex's PropertyGraphIndex. 2) Use Microsoft's GraphRAG pipeline for community detection. 3) Implement a hybrid Graph+Vector approach. 4) Use local models to handle the heavy LLM load of entity extraction.",
+      "dependencies": [
+        "Knowledge Graph Extractor",
+        "Graph Database",
+        "Community Detection Algorithm"
+      ],
+      "related_algorithms": [
+        "Multi-hop RAG",
+        "Hybrid RAG"
+      ],
+      "model_specific_optimizations": {
+        "deepseek": "DeepSeek-V3 excels at generating valid, complex Cypher queries from natural language. Use it to translate user queries into graph traversals.",
+        "qwen": "Qwen2.5 is highly cost-effective for the massive entity-extraction phase of GraphRAG indexing, especially for multilingual datasets.",
+        "kimi": "Kimi's massive context window is perfect for ingesting the massive 'community summaries' generated by Microsoft GraphRAG without truncation.",
+        "z_ai": "GLM-4's robust tool-use can dynamically decide whether a query requires a graph traversal (Cypher) or a standard vector search."
+      },
+      "references": [
+        "Edge et al. 2024 'From Local to Global: A Graph RAG Approach to Query-Focused Summarization'"
+      ],
+      "code_snippet": "from llama_index.core import PropertyGraphIndex\nindex = PropertyGraphIndex.from_documents(documents, llm=llm, kg_extractor=llm_kg_extractor, show_progress=True)\nquery_engine = index.as_query_engine(include_text=True)",
+      "maturity_level": "Emerging"
+    },
+    "index": 5
+  },
+  {
+    "algorithm_name": "Hierarchical RAG / Parent-Child Multi-Level Retrieval",
+    "category": "Context-Optimized - Granularity & Structure",
+    "eli5": "Reads the table of contents and summaries first to find the right chapter, then dives into the specific paragraphs in that chapter to get the exact details.",
+    "purpose": "Preserve broad document context while retrieving specific details by indexing and retrieving at multiple levels of granularity.",
+    "input_dataset": "Very large, highly structured documents (books, long reports, legal contracts, codebases).",
+    "usecase_scenarios": [
+      "Analyzing 100+ page financial reports",
+      "Codebase understanding",
+      "Scenarios where surrounding context is critical"
+    ],
+    "outcome": "Highly contextualized responses where the LLM understands both micro-details and macro-structure.",
+    "benchmark_metrics": [
+      "Contextual faithfulness",
+      "Macro-to-micro retrieval accuracy",
+      "Document structure preservation score"
+    ],
+    "metadata": {
+      "frameworks_classes": [
+        "LlamaIndex AutoMergingRetriever",
+        "LangChain ParentDocumentRetriever",
+        "Unstructured.io"
+      ],
+      "key_hyperparameters": [
+        "parent_chunk_size",
+        "child_chunk_size",
+        "merge_threshold"
+      ],
+      "computational_complexity": "O(N) for multi-level indexing, O(log N) for hierarchical search",
+      "pros": [
+        "Prevents context fragmentation problems",
+        "Allows for broad-to-narrow retrieval strategies",
+        "Improves LLM comprehension of document structure"
+      ],
+      "cons": [
+        "Complex indexing strategy",
+        "Higher storage requirements",
+        "Slower retrieval due to two-step resolution"
+      ],
+      "implementation_guide": "1) Automate document parsing using Unstructured.io. 2) Use LlamaIndex's AutoMergingRetriever to automatically merge child chunks. 3) Implement an automated background job to regenerate summaries when parent documents update.",
+      "dependencies": [
+        "Multi-level Document Parser",
+        "Summary Generator LLM",
+        "Parent-Child Indexing Structure"
+      ],
+      "related_algorithms": [
+        "Advanced RAG",
+        "Naive RAG"
+      ],
+      "model_specific_optimizations": {
+        "deepseek": "DeepSeek-Coder-V2 is exceptional for Hierarchical RAG on codebases, understanding the file-to-function hierarchy better than almost any other model.",
+        "qwen": "Qwen2.5's strong structural understanding makes it ideal for generating the parent-level summaries during the indexing phase.",
+        "kimi": "Kimi's 2M context window makes Hierarchical RAG largely obsolete for single documents; you can just feed the whole book to Kimi.",
+        "z_ai": "GLM-4's document parsing capabilities make it excellent at extracting the natural hierarchical boundaries (headers, sections) during ingestion."
+      },
+      "references": [
+        "Ma et al. 2023 'RAPTOR: Recursive Abstractive Processing for Tree-Organized Retrieval'"
+      ],
+      "code_snippet": "from llama_index.core.retrievers import AutoMergingRetriever\nfrom llama_index.core import VectorIndexRetriever\nparser = HierarchicalNodeParser.from_defaults(chunk_sizes=[2048, 512, 128])\nnodes = parser.get_nodes_from_documents(documents)\nretriever = AutoMergingRetriever(VectorIndexRetriever(index), automerging_threshold=3)",
+      "maturity_level": "Production-Ready"
+    },
+    "index": 6
+  },
+  {
+    "algorithm_name": "Corrective RAG (CRAG) / Self-Evaluating Retrieval",
+    "category": "Reliability-Optimized - Verification & Fallback",
+    "eli5": "The AI checks its own homework. If the documents it found don't actually answer the question, it throws them out and searches somewhere else before answering.",
+    "purpose": "Introduce a verification layer that evaluates the relevance of retrieved documents, triggering corrective actions if the internal retrieval is deemed insufficient.",
+    "input_dataset": "Internal knowledge base + optional external search API.",
+    "usecase_scenarios": [
+      "Mission-critical applications where hallucinations are unacceptable",
+      "Dynamic knowledge bases where internal data might be outdated",
+      "Customer-facing bots requiring high factual reliability"
+    ],
+    "outcome": "Validated, high-confidence context passed to the generator, drastically reducing hallucinations.",
+    "benchmark_metrics": [
+      "Hallucination rate reduction",
+      "Fallback trigger accuracy",
+      "End-to-end factual correctness"
+    ],
+    "metadata": {
+      "frameworks_classes": [
+        "LangGraph",
+        "Ragas",
+        "Tavily / Bing Search API"
+      ],
+      "key_hyperparameters": [
+        "confidence_threshold",
+        "grader_model_temperature",
+        "max_web_search_results"
+      ],
+      "computational_complexity": "O(N) for retrieval + O(1) for grading + O(W) for web fallback",
+      "pros": [
+        "Self-correcting mechanism drastically reduces hallucinations",
+        "Ensures only high-quality context reaches the generator",
+        "Gracefully handles knowledge cutoffs"
+      ],
+      "cons": [
+        "Adds significant latency",
+        "Increases API/LLM costs",
+        "Grading prompts must be meticulously tuned"
+      ],
+      "implementation_guide": "1) Automate the grading threshold using Ragas. 2) Use a lightweight, fine-tuned classifier instead of a full LLM for the evaluation step to reduce latency. 3) Implement LangGraph for conditional routing.",
+      "dependencies": [
+        "Primary Retriever",
+        "Evaluation LLM / Grader",
+        "Alternative Retriever"
+      ],
+      "related_algorithms": [
+        "Self RAG",
+        "Agentic RAG"
+      ],
+      "model_specific_optimizations": {
+        "deepseek": "Use DeepSeek-V3 for the final generation, but use a smaller, faster model (like Qwen2.5-7B) for the retrieval grading step to minimize latency and cost.",
+        "qwen": "Qwen2.5-7B is the perfect open-source 'grader' model. It's fast, cheap to host locally, and highly accurate at evaluating retrieval relevance.",
+        "kimi": "Kimi's built-in web search integration makes the 'fallback' step of CRAG seamless and highly reliable without needing external APIs.",
+        "z_ai": "GLM-4's strong safety and alignment training makes it an excellent, conservative 'grader' that will reliably reject hallucinated or irrelevant context."
+      },
+      "references": [
+        "Yan et al. 2024 'Corrective Retrieval Augmented Generation'"
+      ],
+      "code_snippet": "from langgraph.graph import StateGraph, END\ndef grade_documents(state):\n    return 'correct' if score > threshold else 'incorrect'\nworkflow = StateGraph(State)\nworkflow.add_node('retrieve', retrieve_docs)\nworkflow.add_node('grade', grade_docs)\nworkflow.add_conditional_edges('grade', grade_documents, {'correct': 'generate', 'incorrect': 'web_search'})",
+      "maturity_level": "Emerging"
+    },
+    "index": 7
+  },
+  {
+    "algorithm_name": "Self RAG / Self-Reflective Retrieval-Augmented Generation",
+    "category": "Grounding-Optimized - Intrinsic Reflection",
+    "eli5": "The AI is trained to pause and think: 'Do I need to look this up?', 'Does this look-up actually help?', and 'Did I just make up this answer?' before speaking.",
+    "purpose": "Empower the LLM with intrinsic self-reflection capabilities, allowing it to autonomously decide when to retrieve, evaluate relevance, and critique its own generation.",
+    "input_dataset": "Unstructured text + fine-tuning data for reflection tokens (or specialized prompting).",
+    "usecase_scenarios": [
+      "Answer grounding where strict adherence to evidence is required",
+      "Reducing hallucinations without sacrificing fluency",
+      "Optimizing retrieval costs by only retrieving when necessary"
+    ],
+    "outcome": "Highly grounded, factually accurate outputs with built-in self-correction.",
+    "benchmark_metrics": [
+      "Grounding accuracy",
+      "Retrieval necessity precision",
+      "Generation support score"
+    ],
+    "metadata": {
+      "frameworks_classes": [
+        "Self-RAG",
+        "LangChain Self-Querying",
+        "DSPy"
+      ],
+      "key_hyperparameters": [
+        "retrieve_token_threshold",
+        "isRelevant_token_threshold",
+        "isSupported_token_threshold"
+      ],
+      "computational_complexity": "O(N) for retrieval (conditional) + O(L) for generation with reflection",
+      "pros": [
+        "Highly grounded and factually accurate",
+        "Dynamic retrieval saves compute",
+        "Built-in self-correction"
+      ],
+      "cons": [
+        "Requires complex prompting or specific fine-tuning",
+        "Slower generation due to reflection steps",
+        "Reflection tokens can disrupt natural output flow"
+      ],
+      "implementation_guide": "1) Use DSPy to automatically optimize complex system prompts that simulate Self-RAG reflection steps. 2) Automate the evaluation of reflection quality using a secondary LLM judge. 3) Combine with CRAG for external validation.",
+      "dependencies": [
+        "Self-Reflective LLM",
+        "Retriever",
+        "Critique / Reflection Engine"
+      ],
+      "related_algorithms": [
+        "Corrective RAG (CRAG)",
+        "Agentic RAG"
+      ],
+      "model_specific_optimizations": {
+        "deepseek": "DeepSeek-R1's native 'extended thinking' is the ultimate Self-RAG implementation. It naturally outputs its retrieval decisions, relevance checks, and support verification in its thinking blocks.",
+        "qwen": "Qwen2.5 can be prompted to output structured JSON reflection steps (e.g., {'needs_retrieval': true}) to simulate Self-RAG without fine-tuning.",
+        "kimi": "Kimi's long context reduces the need for the 'needs retrieval' check, but its strong instruction following makes it great at the 'is_supported' critique phase.",
+        "z_ai": "GLM-4's structured output capabilities ensure that the reflection tokens or JSON critique steps are generated reliably without breaking the pipeline."
+      },
+      "references": [
+        "Asai et al. 2023 'Self-RAG: Learning to Retrieve, Generate, and Critique through Self-Reflection'"
+      ],
+      "code_snippet": "self_rag_prompt = \"\"\"\nAnswer the question. \n1. Output [Retrieve] if you need external info.\n2. After retrieving, output [IsRelevant: Yes/No].\n3. Generate answer.\n4. Output [IsSupported: Yes/No] based on retrieved text.\n\"\"\"\nresponse = llm.invoke(self_rag_prompt + user_query)",
+      "maturity_level": "Experimental"
+    },
+    "index": 8
+  },
+  {
+    "algorithm_name": "Agentic RAG / Autonomous Tool-Using Retrieval",
+    "category": "Workflow-Optimized - Dynamic Orchestration",
+    "eli5": "Instead of a fixed assembly line, you give the AI a toolbox and let it decide which tools to use, in what order, and when to stop, to solve the problem.",
+    "purpose": "Transform RAG from a fixed pipeline into a dynamic, autonomous workflow where an AI agent decides when to retrieve, which tools to call, and whether to iterate.",
+    "input_dataset": "Multi-modal data sources: Vector DBs, SQL databases, REST APIs, Web Search.",
+    "usecase_scenarios": [
+      "Complex tasks requiring multiple data sources",
+      "Dynamic workflows where the retrieval strategy cannot be predetermined",
+      "Systems requiring autonomous problem-solving"
+    ],
+    "outcome": "Autonomously executed, multi-step workflows that seamlessly integrate structured and unstructured data.",
+    "benchmark_metrics": [
+      "Task completion rate",
+      "Tool selection accuracy",
+      "Step efficiency"
+    ],
+    "metadata": {
+      "frameworks_classes": [
+        "LangGraph",
+        "LlamaIndex Workflows",
+        "AutoGen / CrewAI",
+        "DSPy"
+      ],
+      "key_hyperparameters": [
+        "max_iterations",
+        "tool_selection_temperature",
+        "reflection_loop_count"
+      ],
+      "computational_complexity": "O(I * (T + L)) where I is iterations",
+      "pros": [
+        "Ultimate flexibility",
+        "Seamlessly integrates structured and unstructured data",
+        "Can perform actions beyond retrieval"
+      ],
+      "cons": [
+        "Unpredictable execution paths make debugging difficult",
+        "Very high latency and compute costs",
+        "Risk of infinite loops"
+      ],
+      "implementation_guide": "1) Use LangGraph to build stateful, cyclic agent workflows with checkpointing. 2) Automate tool selection using DSPy's ReAct optimizers. 3) Implement strict guardrails: max iteration limits, token budget caps, and automated observability.",
+      "dependencies": [
+        "Agent Orchestrator",
+        "Toolset",
+        "Short-term & Long-term Memory",
+        "LLM"
+      ],
+      "related_algorithms": [
+        "Multi-hop RAG",
+        "Corrective RAG (CRAG)"
+      ],
+      "model_specific_optimizations": {
+        "deepseek": "DeepSeek-V3 has top-tier native tool-use (function calling) capabilities. Use its native JSON tool calling rather than parsing text to ensure 100% reliable execution.",
+        "qwen": "Qwen2.5-72B-Instruct is currently one of the best open-source models for Agentic RAG, rivaling closed models in complex multi-tool orchestration.",
+        "kimi": "Kimi's 'Kimi Explorer' acts as a pre-built Agentic RAG system for web and document research, requiring zero setup for basic autonomous search tasks.",
+        "z_ai": "GLM-4's Agent framework (AutoGLM) provides built-in orchestration for complex, multi-step tool use, making it highly effective for desktop and web automation."
+      },
+      "references": [
+        "Wang et al. 2023 'Voyager: An Open-Ended Embodied Agent with Large Language Models'"
+      ],
+      "code_snippet": "from langgraph.prebuilt import create_react_agent\nfrom langchain_core.tools import tool\n@tool\ndef search_vector_db(query: str) -> str: ...\n@tool\ndef query_sql_db(sql: str) -> str: ...\nagent = create_react_agent(model=llm, tools=[search_vector_db, query_sql_db])\nresponse = agent.invoke({'messages': [('user', 'Complex query...')]})",
+      "maturity_level": "Emerging"
+    },
+    "index": 9
+  },
+  {
+    "algorithm_name": "Memory Augmented RAG / Context-Persistent Retrieval",
+    "category": "Personalization-Optimized - State & Continuity",
+    "eli5": "The AI remembers what you talked about yesterday and what you like, combining that personal history with new information to give you a customized answer.",
+    "purpose": "Enhance RAG by incorporating relevant information from previous user interactions or stored long-term memory alongside external knowledge for personalized responses.",
+    "input_dataset": "External knowledge base + User interaction history / Profile data.",
+    "usecase_scenarios": [
+      "Personalized AI assistants and customer support bots",
+      "Conversations that span multiple sessions",
+      "Applications requiring the AI to 'remember' user preferences"
+    ],
+    "outcome": "Highly personalized, continuous user experiences where the AI adapts based on historical context.",
+    "benchmark_metrics": [
+      "Personalization accuracy",
+      "Cross-session context retention",
+      "User satisfaction metrics"
+    ],
+    "metadata": {
+      "frameworks_classes": [
+        "Mem0",
+        "LangChain Memory",
+        "Zep",
+        "Redis / PostgreSQL"
+      ],
+      "key_hyperparameters": [
+        "memory_decay_rate",
+        "memory_summary_threshold",
+        "user_profile_embedding_weight"
+      ],
+      "computational_complexity": "O(M) for memory retrieval + O(N) for knowledge retrieval + O(L) for generation",
+      "pros": [
+        "Creates a highly personalized experience",
+        "Reduces need for users to repeat context",
+        "Improves relevance via user history"
+      ],
+      "cons": [
+        "Complex memory management",
+        "Significant privacy and security concerns",
+        "Risk of over-indexing on past interactions"
+      ],
+      "implementation_guide": "1) Use a dedicated memory layer like Mem0 or Zep. 2) Implement automated 'memory decay' via background cron jobs. 3) Ensure strict data isolation and use highly encrypted open-source authentication to secure user memory stores.",
+      "dependencies": [
+        "Short-term Memory",
+        "Long-term Memory Vector DB",
+        "Memory Retriever",
+        "External Knowledge Retriever"
+      ],
+      "related_algorithms": [
+        "Agentic RAG",
+        "Advanced RAG"
+      ],
+      "model_specific_optimizations": {
+        "deepseek": "DeepSeek's strong instruction following ensures it strictly adheres to the boundary between 'user preferences' (memory) and 'objective facts' (retrieved docs).",
+        "qwen": "Qwen2.5's excellent multilingual capabilities allow it to maintain and retrieve user memories accurately across different languages in global deployments.",
+        "kimi": "Kimi's massive context window allows you to inject the entire user interaction history directly into the prompt, bypassing the need for a separate memory retrieval step for short histories.",
+        "z_ai": "GLM-4's strong alignment and safety features make it highly reliable at handling sensitive user memory data without leaking it or hallucinating personal details."
+      },
+      "references": [
+        "Park et al. 2023 'Generative Agents: Interactive Simulacra of Human Behavior'"
+      ],
+      "code_snippet": "from mem0 import Memory\nm = Memory()\nm.add('User prefers concise answers and works in geospatial tech.', user_id='user_123')\nrelevant_memories = m.search('How to process satellite data?', user_id='user_123')\ncontext = f\"User Context: {relevant_memories}\\nExternal Docs: {retrieved_docs}\"",
+      "maturity_level": "Emerging"
+    },
+    "index": 10
+  },
+  {
+    "algorithm_name": "Contextual RAG / Contextual Chunking",
+    "category": "Context-Optimized - Embedding Enhancement",
+    "eli5": "Before chopping the document into pieces, the AI reads the whole thing and rewrites each piece to include the missing context, so the chopped piece makes sense on its own.",
+    "purpose": "Improve embedding quality and retrieval accuracy by prepending document-level context to each chunk before embedding.",
+    "input_dataset": "Unstructured text documents where chunks lack standalone semantic meaning.",
+    "usecase_scenarios": [
+      "Highly technical documents where isolated chunks are ambiguous",
+      "Financial reports where 'Q1 Revenue' needs to be contextualized",
+      "Legal contracts where clauses depend on the preamble"
+    ],
+    "outcome": "Dense embeddings that capture both the micro-content of the chunk and the macro-context of the document.",
+    "benchmark_metrics": [
+      "Retrieval Precision@K",
+      "Contextual Faithfulness",
+      "Embedding cosine similarity distribution"
+    ],
+    "metadata": {
+      "frameworks_classes": [
+        "LlamaIndex ContextualRetriever",
+        "Anthropic Contextual Retrieval",
+        "Custom LLM-based Chunk Rewriter"
+      ],
+      "key_hyperparameters": [
+        "context_window_size_for_rewriting",
+        "rewriter_model_temperature",
+        "max_chunk_tokens_after_context"
+      ],
+      "computational_complexity": "O(N * L) for contextual rewriting, O(log N) for search",
+      "pros": [
+        "Massively improves retrieval accuracy for ambiguous chunks",
+        "Reduces the need for complex post-retrieval re-ranking",
+        "Works with any standard vector database"
+      ],
+      "cons": [
+        "High one-time compute cost for indexing",
+        "Increases the size of the embedded text",
+        "Requires a reliable, fast LLM for the rewriting step"
+      ],
+      "implementation_guide": "1) Use a fast, cheap model to generate the contextual prefixes. 2) Automate the pipeline: Parse -> Chunk -> LLM Rewrite -> Embed. 3) Use DSPy to optimize the prompt that generates the contextual prefix.",
+      "dependencies": [
+        "Fast LLM for Contextual Rewriting",
+        "Dense Embedding Model",
+        "Vector Database"
+      ],
+      "related_algorithms": [
+        "Hierarchical RAG",
+        "Advanced RAG"
+      ],
+      "model_specific_optimizations": {
+        "deepseek": "Use DeepSeek-V3 for the contextual rewriting step if quality is paramount; its instruction following ensures the context is added smoothly.",
+        "qwen": "Qwen2.5-7B-Instruct is the absolute best choice for this pattern. It's fast, cheap to host locally, and highly capable of generating concise contextual prefixes.",
+        "kimi": "Kimi's massive context allows it to read the entire document at once and generate highly accurate, globally consistent contextual prefixes for every chunk.",
+        "z_ai": "GLM-4-Flash provides ultra-low latency and high throughput for the contextual rewriting step, making it ideal for processing massive document repositories quickly."
+      },
+      "references": [
+        "Anthropic 2024 'Introducing Contextual Retrieval'"
+      ],
+      "code_snippet": "context_prompt = \"Here is the whole document: {doc_text}. Here is a chunk: {chunk_text}. Rewrite the chunk to include necessary context.\"\ncontextual_chunks = [llm.invoke(context_prompt.format(doc_text=doc, chunk_text=c)) for c in chunks]\nindex = VectorStoreIndex.from_text_nodes(contextual_chunks)",
+      "maturity_level": "Production-Ready"
+    },
+    "index": 11
+  },
+  {
+    "algorithm_name": "Cache-Augmented Generation (CAG) / Pre-loaded Context",
+    "category": "Latency-Optimized - KV Cache Preloading",
+    "eli5": "Instead of searching for the answer every time, you read the entire book once, memorize it, and then just answer questions directly from your memory instantly.",
+    "purpose": "Bypass the retrieval step entirely at inference time by pre-loading all relevant documents into the LLM's Key-Value (KV) cache.",
+    "input_dataset": "Small to medium-sized, fixed document sets.",
+    "usecase_scenarios": [
+      "Customer support bots for a specific product line",
+      "Interactive fiction with a fixed lore book",
+      "High-throughput scenarios where retrieval latency is unacceptable"
+    ],
+    "outcome": "Instantaneous, highly accurate LLM responses with zero retrieval latency.",
+    "benchmark_metrics": [
+      "Time to First Token (TTFT)",
+      "Context Recall (should be 100%)",
+      "KV Cache memory footprint"
+    ],
+    "metadata": {
+      "frameworks_classes": [
+        "vLLM (Prefix Caching)",
+        "SGLang (RadixAttention)",
+        "LlamaIndex CAG"
+      ],
+      "key_hyperparameters": [
+        "max_context_tokens",
+        "kv_cache_quantization",
+        "prefix_cache_ttl"
+      ],
+      "computational_complexity": "O(N) for initial KV cache preloading, O(1) for retrieval, O(L) for generation",
+      "pros": [
+        "Zero retrieval latency at inference time",
+        "Eliminates retrieval errors caused by bad chunking",
+        "Simplifies architecture"
+      ],
+      "cons": [
+        "Limited by the model's maximum context window",
+        "High VRAM usage for storing the KV cache",
+        "Not suitable for dynamic or massive datasets"
+      ],
+      "implementation_guide": "1) Use vLLM with --enable-prefix-caching or SGLang with RadixAttention. 2) Quantize the KV cache (e.g., FP8) to reduce VRAM usage. 3) Only use CAG when the total document size is well within the model's context limit.",
+      "dependencies": [
+        "High-Context LLM",
+        "Inference Engine with KV Cache Management",
+        "Sufficient VRAM"
+      ],
+      "related_algorithms": [
+        "Naive RAG",
+        "Hierarchical RAG"
+      ],
+      "model_specific_optimizations": {
+        "deepseek": "DeepSeek-V3's Multi-head Latent Attention (MLA) drastically reduces the VRAM footprint of the KV cache, making CAG highly viable for much larger document sets.",
+        "qwen": "Qwen2.5's native 128k (and up to 1M) context window, combined with its efficient attention mechanisms, makes it a perfect candidate for CAG.",
+        "kimi": "Kimi's 2M context window is the ultimate CAG engine. You can literally load entire codebases or hundreds of books into the context and skip retrieval entirely.",
+        "z_ai": "GLM-4's long context support allows for effective CAG on standard business documents, and its optimized inference stack ensures the pre-loaded context doesn't bottleneck generation speed."
+      },
+      "references": [
+        "vLLM Documentation: Prefix Caching"
+      ],
+      "code_snippet": "# vLLM server startup with prefix caching\n# python -m vllm.entrypoints.openai.api_server --model Qwen/Qwen2.5-14B-Instruct --enable-prefix-caching --max-model-len 128000\nresponse = client.chat.completions.create(model=\"Qwen/Qwen2.5-14B-Instruct\", messages=[{\"role\": \"user\", \"content\": \"What is the return policy?\"}])",
+      "maturity_level": "Emerging"
+    },
+    "index": 12
+  },
+  {
+    "algorithm_name": "Multimodal RAG / Cross-Modal Retrieval",
+    "category": "Modality-Optimized - Vision & Text",
+    "eli5": "The AI doesn't just read text; it looks at pictures, charts, and diagrams, and can find answers hidden inside the images just as well as in the text.",
+    "purpose": "Extend RAG beyond text by embedding and retrieving multimodal data (images, charts, tables) alongside text.",
+    "input_dataset": "Documents containing mixed media: PDFs with charts, presentations, technical manuals.",
+    "usecase_scenarios": [
+      "Analyzing financial reports with complex charts",
+      "Technical support for hardware with visual diagrams",
+      "Geospatial analysis involving satellite imagery"
+    ],
+    "outcome": "Comprehensive answers that synthesize both textual data and visual evidence.",
+    "benchmark_metrics": [
+      "Visual Question Answering (VQA) accuracy",
+      "Chart/Table extraction F1 score",
+      "Cross-modal retrieval precision"
+    ],
+    "metadata": {
+      "frameworks_classes": [
+        "LlamaIndex MultiModalVectorStoreIndex",
+        "Unstructured.io",
+        "ColPali"
+      ],
+      "key_hyperparameters": [
+        "image_embedding_model",
+        "text_embedding_model",
+        "image_resolution_for_llm"
+      ],
+      "computational_complexity": "O(N * V) for visual encoding, O(log N) for multimodal search, O(L) for generation",
+      "pros": [
+        "Unlocks critical information trapped in images and tables",
+        "Provides a more complete context for the LLM",
+        "Essential for technical and scientific domains"
+      ],
+      "cons": [
+        "High compute cost for visual encoding",
+        "Requires specialized multimodal embedding models",
+        "Complex pipeline setup"
+      ],
+      "implementation_guide": "1) Use Unstructured.io or LlamaParse to automatically extract images and tables. 2) Use a multimodal embedding model or generate text captions for images before embedding. 3) For advanced setups, use ColPali for direct vision-to-text retrieval.",
+      "dependencies": [
+        "Document Parser",
+        "Multimodal Embedding Model or VLM",
+        "Multimodal LLM"
+      ],
+      "related_algorithms": [
+        "Advanced RAG",
+        "Hierarchical RAG"
+      ],
+      "model_specific_optimizations": {
+        "deepseek": "DeepSeek-VL2 is exceptionally strong at understanding complex charts, diagrams, and scientific figures. Use it as the generation engine to interpret retrieved visual context.",
+        "qwen": "Qwen2.5-VL is currently state-of-the-art for high-resolution image and diagram parsing. Use it for both the visual extraction phase and the final generation phase.",
+        "kimi": "Kimi's native PDF parser is highly optimized for extracting tables and charts from complex documents, making the ingestion phase of Multimodal RAG seamless.",
+        "z_ai": "GLM-4V is highly optimized for visual question answering and diagram retrieval. Its strong bilingual capabilities make it ideal for multimodal RAG in diverse linguistic environments."
+      },
+      "references": [
+        "Chen et al. 2024 'ColPali: Efficient Document Retrieval with Vision Language Models'"
+      ],
+      "code_snippet": "from llama_index.core import SimpleDirectoryReader\nreader = SimpleDirectoryReader(input_dir='./data', required_exts=['.pdf'])\ndocuments = reader.load_data()\nindex = MultiModalVectorStoreIndex.from_documents(documents)\nquery_engine = index.as_query_engine(llm=qwen_vl)",
+      "maturity_level": "Emerging"
+    },
+    "index": 13
+  },
+  {
+    "algorithm_name": "Geospatial RAG (GeoRAG) / Spatially-Aware Retrieval",
+    "category": "Domain-Optimized - Spatial & Vector Fusion",
+    "eli5": "The AI doesn't just search by meaning; it searches by location on a map. It finds documents that are semantically relevant AND physically close to the area you're asking about.",
+    "purpose": "Integrate spatial indexing with vector search to retrieve context that is both semantically relevant and geographically constrained.",
+    "input_dataset": "Geospatial data: IoT sensor logs, satellite imagery metadata, crop yield reports, POI data.",
+    "usecase_scenarios": [
+      "Real-time crop productivity monitoring",
+      "Supply chain disruption analysis based on weather and location",
+      "Urban planning and infrastructure maintenance Q&A"
+    ],
+    "outcome": "Highly precise, location-aware answers that respect geographical boundaries and semantic meaning simultaneously.",
+    "benchmark_metrics": [
+      "Spatial Recall@K",
+      "Semantic Precision@K",
+      "Spatial-Semantic Fusion Accuracy"
+    ],
+    "metadata": {
+      "frameworks_classes": [
+        "PostgreSQL + PostGIS + pgvector",
+        "Elasticsearch with Geo-Point + kNN",
+        "H3 / S2 Grid Indexing"
+      ],
+      "key_hyperparameters": [
+        "spatial_resolution",
+        "search_radius_km",
+        "vector_weight vs spatial_weight"
+      ],
+      "computational_complexity": "O(S) for spatial index search + O(log N) for vector search + O(K) for fusion",
+      "pros": [
+        "Solves the critical 'where' dimension missing in standard RAG",
+        "Drastically reduces irrelevant context by enforcing spatial boundaries",
+        "Enables complex spatial reasoning"
+      ],
+      "cons": [
+        "Requires specialized spatial database knowledge",
+        "Complex query formulation",
+        "Higher infrastructure complexity"
+      ],
+      "implementation_guide": "1) Use PostGIS with pgvector for a unified spatial-vector database. 2) Index geospatial metadata using H3 hexagonal grids. 3) Implement a two-step retrieval: first filter by spatial bounding box, then perform vector similarity search. 4) Use LLMs to translate natural language spatial queries into PostGIS SQL.",
+      "dependencies": [
+        "Spatial Database",
+        "Vector Extension",
+        "Spatial Indexing Library",
+        "LLM for Text-to-SQL-Spatial"
+      ],
+      "related_algorithms": [
+        "Advanced RAG",
+        "Agentic RAG"
+      ],
+      "model_specific_optimizations": {
+        "deepseek": "DeepSeek-Coder-V2 is exceptional at generating complex PostGIS SQL queries with spatial joins from natural language, making the retrieval step highly accurate.",
+        "qwen": "Qwen2.5's strong multilingual and geospatial reasoning capabilities make it ideal for processing global POI data and generating spatial queries in diverse languages.",
+        "kimi": "Kimi's massive context is perfect for ingesting massive geospatial text reports and combining them with spatial metadata.",
+        "z_ai": "GLM-4's robust tool-use can orchestrate the GeoRAG pipeline: calling a spatial API to get the bounding box, then querying the vector DB, and finally synthesizing the result."
+      },
+      "references": [
+        "PostGIS Documentation: Spatial Indexing"
+      ],
+      "code_snippet": "sql_query = \"\"\"\nSELECT doc_id, content, embedding <-> query_embedding AS distance\nFROM documents\nWHERE ST_DWithin(geom, ST_SetSRID(ST_MakePoint(:lon, :lat), 4326), :radius_km * 1000)\nORDER BY distance LIMIT 5;\n\"\"\"",
+      "maturity_level": "Emerging"
+    },
+    "index": 14
+  },
+  {
+    "algorithm_name": "Late Interaction RAG / ColBERTv2 Token-Level Matching",
+    "category": "Retrieval-Optimized - Fine-Grained Matching",
+    "eli5": "Instead of squishing a whole paragraph into one single number to compare, it compares every single word in your question to every single word in the paragraph to find the exact matches.",
+    "purpose": "Achieve state-of-the-art retrieval accuracy by using late interaction (token-level matching) instead of single-vector dot products.",
+    "input_dataset": "Large-scale unstructured text where fine-grained matching is critical.",
+    "usecase_scenarios": [
+      "High-stakes legal discovery",
+      "Medical literature retrieval",
+      "Complex technical documentation"
+    ],
+    "outcome": "Exceptionally high retrieval precision and recall, outperforming standard dense vector search.",
+    "benchmark_metrics": [
+      "MS MARCO Pass Ranking MRR@10",
+      "NDCG@10",
+      "Storage overhead ratio"
+    ],
+    "metadata": {
+      "frameworks_classes": [
+        "Vespa",
+        "Elasticsearch / OpenSearch",
+        "RAGatouille",
+        "ColBERTv2"
+      ],
+      "key_hyperparameters": [
+        "query_max_length",
+        "doc_max_length",
+        "embedding_dimension_per_token"
+      ],
+      "computational_complexity": "O(N * L_q * L_d) for scoring, requires specialized indexing for O(1) inference",
+      "pros": [
+        "State-of-the-art retrieval accuracy",
+        "Captures fine-grained nuances",
+        "Highly robust to out-of-vocabulary terms"
+      ],
+      "cons": [
+        "Massive storage overhead",
+        "Requires specialized indexing engines",
+        "Higher latency for initial indexing"
+      ],
+      "implementation_guide": "1) Use Vespa or Elasticsearch with native ColBERT support. 2) Use the PLAID engine for highly efficient late interaction inference. 3) Fine-tune the ColBERT model on your specific domain data using RAGatouille.",
+      "dependencies": [
+        "ColBERTv2 Model",
+        "Specialized Vector Engine",
+        "High Storage Capacity"
+      ],
+      "related_algorithms": [
+        "Hybrid RAG",
+        "Advanced RAG"
+      ],
+      "model_specific_optimizations": {
+        "deepseek": "While DeepSeek is a generation model, its strong embedding capabilities can be adapted or fine-tuned for late interaction setups in high-accuracy enterprise search.",
+        "qwen": "Qwen's dense embeddings can be used as the base for ColBERT-style late interaction, and Qwen2.5's strong generation ensures that the highly precise retrieved context is utilized perfectly.",
+        "kimi": "Kimi's long context makes ColBERT less critical for single-doc search, but for massive corpus search, ColBERT's precision ensures the most relevant chunks are fed into Kimi's massive window.",
+        "z_ai": "GLM's embedding models can be integrated into Vespa for ColBERT setups, leveraging GLM-4's strong generation to synthesize the highly nuanced context retrieved by late interaction."
+      },
+      "references": [
+        "Khattab & Zaharia 2020 'ColBERT: Fast and Accurate Document Retrieval via PLaid Interaction'"
+      ],
+      "code_snippet": "from ragatouille import RAGPretrainedModel\nRAG = RAGPretrainedModel.from_pretrained(\"colbert-ir/colbertv2.0\")\nresults = RAG.search(\"What is the exact clause regarding force majeure?\", k=5)",
+      "maturity_level": "Production-Ready"
+    },
+    "index": 15
+  },
+  {
+    "algorithm_name": "LightRAG / Dual-Level Graph-Vector Retrieval",
+    "category": "Structure-Optimized - Efficient Graph RAG",
+    "eli5": "It builds a map of connections like GraphRAG, but it's much faster and cheaper because it skips the heavy AI summarization and just uses smart shortcuts to find the answer.",
+    "purpose": "Combine the relational reasoning of Graph RAG with the semantic flexibility of Vector RAG, but optimize for speed and cost by avoiding heavy LLM-based community detection.",
+    "input_dataset": "Unstructured text requiring relational reasoning, but where the massive compute cost of Microsoft GraphRAG is prohibitive.",
+    "usecase_scenarios": [
+      "Fast-paced enterprise search requiring relational context",
+      "Dynamic knowledge bases where the graph needs to be updated frequently",
+      "Applications needing GraphRAG capabilities but with strict latency and budget constraints"
+    ],
+    "outcome": "Fast, cost-effective retrieval that captures both specific entity details and broad relational themes.",
+    "benchmark_metrics": [
+      "Indexing time and compute cost reduction",
+      "Query latency",
+      "Relational retrieval accuracy"
+    ],
+    "metadata": {
+      "frameworks_classes": [
+        "LightRAG",
+        "Neo4j + Vector Index",
+        "Custom Dual-Retriever Orchestrator"
+      ],
+      "key_hyperparameters": [
+        "low_level_retrieval_k",
+        "high_level_retrieval_k",
+        "entity_extraction_threshold"
+      ],
+      "computational_complexity": "O(N * L) for lightweight entity extraction, O(V + E) for dual-level traversal",
+      "pros": [
+        "Drastically reduces indexing time and compute cost",
+        "Captures both micro and macro context",
+        "Highly scalable and easier to maintain"
+      ],
+      "cons": [
+        "Loses the deep 'community summaries' of traditional GraphRAG",
+        "Requires careful tuning of the dual-level retrieval weights",
+        "Still more complex to set up than pure Vector RAG"
+      ],
+      "implementation_guide": "1) Use the LightRAG library for out-of-the-box dual-level indexing. 2) Implement a routing mechanism: use low-level retrieval for specific entity queries, and high-level retrieval for thematic queries. 3) Use a fast, cheap LLM for the entity extraction phase.",
+      "dependencies": [
+        "Lightweight Entity Extractor",
+        "Graph Database + Vector Index",
+        "Dual-Level Retriever"
+      ],
+      "related_algorithms": [
+        "Graph RAG",
+        "Hybrid RAG"
+      ],
+      "model_specific_optimizations": {
+        "deepseek": "DeepSeek-R1's reasoning can be used to intelligently route queries between the low-level (entity) and high-level (relational) retrieval paths, optimizing accuracy.",
+        "qwen": "Qwen2.5-7B is the perfect model for LightRAG's entity extraction phase. It's fast, cheap, and accurate, keeping the indexing pipeline highly efficient.",
+        "kimi": "Kimi's long context can easily absorb the combined outputs of both the low-level and high-level retrieval paths, ensuring no relational nuance is lost during generation.",
+        "z_ai": "GLM-4's tool-use can dynamically decide whether a query requires low-level entity lookup or high-level relational traversal, acting as an intelligent router for LightRAG."
+      },
+      "references": [
+        "Han et al. 2024 'LightRAG: Simple and Fast Retrieval-Augmented Generation'"
+      ],
+      "code_snippet": "from lightrag import LightRAG, QueryParam\nrag = LightRAG(working_dir=\"./lightrag_db\")\nrag.insert(\"Document text...\")\nans1 = rag.query(\"Who is the CEO?\", param=QueryParam(mode=\"local\"))\nans2 = rag.query(\"How do supply chain issues affect revenue?\", param=QueryParam(mode=\"global\"))",
+      "maturity_level": "Emerging"
+    },
+    "index": 16
+  },
+  {
+    "algorithm_name": "RAPTOR / Tree-Organized Retrieval",
+    "category": "Context-Optimized - Recursive Summarization",
+    "eli5": "Groups similar paragraphs together, summarizes them, and builds a tree of summaries from the bottom up, so the AI can search at the exact right level of detail.",
+    "purpose": "Overcome the flat structure of standard vector stores by recursively clustering and summarizing text chunks into a tree, enabling both broad thematic retrieval and specific detail retrieval.",
+    "input_dataset": "Large unstructured text corpora where documents contain multiple themes and sub-topics.",
+    "usecase_scenarios": [
+      "Analyzing long-form journalism or books",
+      "Complex legal case files with multiple overlapping arguments",
+      "Scientific literature reviews covering multiple sub-fields"
+    ],
+    "outcome": "A hierarchical tree of text chunks and summaries, allowing the retriever to fetch high-level themes or low-level details depending on the query.",
+    "benchmark_metrics": [
+      "Multi-level retrieval accuracy",
+      "Summary quality (ROUGE/BLEU)",
+      "Tree depth vs. retrieval latency trade-off"
+    ],
+    "metadata": {
+      "frameworks_classes": [
+        "LlamaIndex RAPTOR implementation",
+        "Custom Recursive Clustering Pipeline",
+        "Scikit-learn (for GMM clustering)"
+      ],
+      "key_hyperparameters": [
+        "clustering_algorithm (e.g., GMM, K-Means)",
+        "summary_model",
+        "tree_depth_limit",
+        "cluster_threshold"
+      ],
+      "computational_complexity": "O(N * L) for recursive summarization, O(log N) for tree traversal",
+      "pros": [
+        "Natively handles documents with multiple distinct themes",
+        "Allows for both broad and highly specific retrieval",
+        "Reduces the 'lost in the middle' problem for long documents"
+      ],
+      "cons": [
+        "High compute cost for building the tree (requires many LLM summarization calls)",
+        "Clustering can sometimes group unrelated concepts if embeddings are poor",
+        "Complex to maintain and update incrementally"
+      ],
+      "implementation_guide": "1) Automate the tree-building process using LlamaIndex's RAPTOR module. 2) Use a fast, cheap model for the recursive summarization steps to keep costs down. 3) Implement a dual-retrieval strategy: search the leaf nodes for specific facts, and search the summary nodes for broad themes.",
+      "dependencies": [
+        "Dense Embedding Model",
+        "Clustering Algorithm (GMM/K-Means)",
+        "Summarization LLM",
+        "Vector Database"
+      ],
+      "related_algorithms": [
+        "Hierarchical RAG",
+        "Graph RAG"
+      ],
+      "model_specific_optimizations": {
+        "deepseek": "DeepSeek-V3's strong summarization ensures high-quality node summaries during the recursive clustering phase, preserving critical nuances.",
+        "qwen": "Qwen2.5-7B is highly efficient for the repetitive clustering and summarization tasks required to build the RAPTOR tree, keeping costs low.",
+        "kimi": "Kimi's massive context allows it to process larger clusters at once, reducing the depth of the tree and speeding up the indexing phase significantly.",
+        "z_ai": "GLM-4's structured output ensures the clustering algorithms receive consistently formatted inputs during the tree-building phase, reducing parsing errors."
+      },
+      "references": [
+        "Sarthi et al. 2024 'RAPTOR: Recursive Abstractive Processing for Tree-Organized Retrieval'"
+      ],
+      "code_snippet": "from llama_index.core import Document\nfrom llama_index.core.node_parser import HierarchicalNodeParser\n# Conceptual RAPTOR indexing\nparser = HierarchicalNodeParser.from_defaults()\nnodes = parser.get_nodes_from_documents(documents)\n# Apply clustering and summarization recursively to build the tree\n# (Use LlamaIndex's RAPTOR module for full implementation)",
+      "maturity_level": "Emerging"
+    },
+    "index": 17
+  },
+  {
+    "algorithm_name": "Compiled RAG / DSPy-Optimized RAG",
+    "category": "Automation-Optimized - Programmatic Pipeline Tuning",
+    "eli5": "Instead of manually tweaking prompts and settings, you give an AI compiler your goals, and it automatically writes, tests, and optimizes the perfect RAG pipeline for you.",
+    "purpose": "Automate the optimization of RAG pipelines (prompts, few-shot examples, retriever weights) using programmatic frameworks like DSPy, replacing manual prompt engineering with algorithmic optimization.",
+    "input_dataset": "Unstructured text + a labeled validation set of queries and ideal answers.",
+    "usecase_scenarios": [
+      "Enterprise RAG systems requiring continuous optimization as data changes",
+      "Teams lacking deep prompt engineering expertise",
+      "Complex pipelines with multiple LLM calls that are hard to tune manually"
+    ],
+    "outcome": "A mathematically optimized RAG pipeline with tuned prompts, few-shot examples, and routing logic, maximizing accuracy and minimizing token usage.",
+    "benchmark_metrics": [
+      "Optimization convergence rate",
+      "Validation set accuracy (pre vs. post compilation)",
+      "Token efficiency (tokens used per query)"
+    ],
+    "metadata": {
+      "frameworks_classes": [
+        "DSPy",
+        "LangSmith (for evaluation)",
+        "Ragas (for metrics)"
+      ],
+      "key_hyperparameters": [
+        "optimizer_type (e.g., BootstrapFewShot, MIPRO)",
+        "metric_function",
+        "trainset_size",
+        "valset_size"
+      ],
+      "computational_complexity": "O(T * L) for compilation (where T is trials), O(1) for inference",
+      "pros": [
+        "Drastically reduces manual prompt engineering time",
+        "Automatically finds optimal few-shot examples and instructions",
+        "Can jointly optimize retriever and generator components"
+      ],
+      "cons": [
+        "Requires a high-quality labeled validation set",
+        "Compilation can be computationally expensive and slow",
+        "Steep learning curve for the DSPy framework"
+      ],
+      "implementation_guide": "1) Define your RAG pipeline using DSPy Signatures and Modules. 2) Create a robust validation set with ground-truth answers. 3) Use DSPy's MIPRO or BootstrapFewShot optimizers to automatically compile the pipeline. 4) Deploy the compiled pipeline and set up automated re-compilation triggers when data drifts.",
+      "dependencies": [
+        "DSPy Framework",
+        "Labeled Validation Dataset",
+        "Base LLM and Retriever"
+      ],
+      "related_algorithms": [
+        "Advanced RAG",
+        "Agentic RAG"
+      ],
+      "model_specific_optimizations": {
+        "deepseek": "DeepSeek-R1 can be used as the 'teacher' model in DSPy to generate high-quality bootstrap examples for optimizing the RAG pipeline.",
+        "qwen": "Qwen2.5 is highly compatible with DSPy's optimizers, providing fast and accurate inference during the compilation and evaluation phases.",
+        "kimi": "Kimi's long context is ideal for DSPy's evaluation steps, allowing it to process full retrieved contexts without truncation during optimization.",
+        "z_ai": "GLM-4's strong instruction following makes it a reliable 'student' model that accurately learns and executes the optimized prompts generated by DSPy."
+      },
+      "references": [
+        "Khattab et al. 2023 'DSPy: Compiling Declarative Language Model Calls into State-of-the-Art Pipelines'"
+      ],
+      "code_snippet": "import dspy\n# Define RAG module\nclass RAG(dspy.Module):\n    def __init__(self, num_passages=3):\n        self.retrieve = dspy.Retrieve(k=num_passages)\n        self.generate_answer = dspy.ChainOfThought('context, question -> answer')\n    def forward(self, question):\n        context = self.retrieve(question).passages\n        return self.generate_answer(context=context, question=question)\n\n# Compile and optimize\nrag = RAG()\nrag_compiled = dspy.MIPROv2(metric=metric).compile(rag, trainset=trainset, valset=valset)",
+      "maturity_level": "Emerging"
+    },
+    "index": 18
+  },
+  {
+    "algorithm_name": "Code-Aware RAG / AST-Augmented RAG",
+    "category": "Domain-Optimized - Software Engineering",
+    "eli5": "Instead of just searching text, it understands the actual code structure—functions, classes, and how they call each other—to find the exact code needed to fix a bug or add a feature.",
+    "purpose": "Enhance retrieval for software repositories by combining text embeddings with Abstract Syntax Tree (AST) parsing, call graphs, and repository-level context.",
+    "input_dataset": "Software codebases (GitHub repos, local directories) containing multiple languages and file types.",
+    "usecase_scenarios": [
+      "AI-powered code editors and IDE plugins",
+      "Automated bug fixing and refactoring agents",
+      "Codebase Q&A for onboarding new developers"
+    ],
+    "outcome": "Highly precise code retrieval that understands dependencies, imports, and structural context, enabling accurate code generation and modification.",
+    "benchmark_metrics": [
+      "Code retrieval precision (Pass@K)",
+      "AST node matching accuracy",
+      "Repository-level context completeness"
+    ],
+    "metadata": {
+      "frameworks_classes": [
+        "Aider",
+        "SWE-agent",
+        "Cursor (Internal Architecture)",
+        "LlamaIndex Code Parsing"
+      ],
+      "key_hyperparameters": [
+        "ast_parsing_depth",
+        "call_graph_traversal_radius",
+        "repo_map_token_budget",
+        "language_specific_chunking_rules"
+      ],
+      "computational_complexity": "O(N) for AST parsing and graph building, O(log N) for code search",
+      "pros": [
+        "Understands code semantics, not just text similarity",
+        "Captures cross-file dependencies and imports",
+        "Drastically reduces hallucinated or syntactically invalid code"
+      ],
+      "cons": [
+        "Requires complex parsing infrastructure for multiple languages",
+        "High compute cost for building and maintaining the repo graph",
+        "AST structures can be massive, requiring aggressive pruning"
+      ],
+      "implementation_guide": "1) Use tree-sitter to parse code into ASTs for multiple languages. 2) Build a call graph and dependency map of the repository. 3) Generate a 'repo map' (a high-level summary of files and functions) to provide global context. 4) Retrieve specific code chunks based on the repo map and call graph relevance.",
+      "dependencies": [
+        "Tree-sitter (for AST parsing)",
+        "Code Embedding Model (e.g., Voyage-Code, StarCoder Embed)",
+        "Graph Database or In-Memory Graph for Call Graphs",
+        "Code LLM"
+      ],
+      "related_algorithms": [
+        "Hierarchical RAG",
+        "Graph RAG"
+      ],
+      "model_specific_optimizations": {
+        "deepseek": "DeepSeek-Coder-V2 is the undisputed leader here; its native understanding of code structure makes it perfect for generating and querying AST-based context.",
+        "qwen": "Qwen2.5-Coder provides excellent code comprehension and can efficiently parse and embed code chunks for the vector index.",
+        "kimi": "Kimi's massive context allows it to ingest entire repository maps or large codebases directly, bypassing the need for complex chunking in smaller repos.",
+        "z_ai": "CodeGeeX or GLM-4 can be used to generate the repository-level summaries and file-level context required for the indexing phase."
+      },
+      "references": [
+        "Yang et al. 2024 'SWE-agent: Agent-Computer Interfaces Enable Automated Software Engineering'"
+      ],
+      "code_snippet": "# Conceptual Code-Aware RAG using tree-sitter and embeddings\nimport tree_sitter_python as tspython\nfrom llama_index.core import VectorStoreIndex\n# Parse code to AST, extract functions/classes, embed them with file context\n# Build a repo-map summarizing the structure\n# Retrieve relevant functions based on query + repo-map context",
+      "maturity_level": "Emerging"
+    },
+    "index": 19
+  },
+  {
+    "algorithm_name": "Semantic Router RAG / Dynamic Pipeline Routing",
+    "category": "Architecture-Optimized - Intelligent Dispatch",
+    "eli5": "A traffic cop for your AI. It looks at your question and instantly directs it to the best tool—whether that's a database search, a web search, or a document search.",
+    "purpose": "Use a lightweight, ultra-fast classifier or embedding router to analyze incoming queries and dynamically route them to the most appropriate specialized RAG pipeline to optimize cost and accuracy.",
+    "input_dataset": "Diverse query types targeting multiple specialized data sources (SQL DBs, Vector DBs, Graph DBs, Web APIs).",
+    "usecase_scenarios": [
+      "Enterprise AI assistants that need to query both internal docs and live databases",
+      "Customer support bots handling both FAQ lookups and account-specific SQL queries",
+      "Complex research assistants combining web search and internal knowledge bases"
+    ],
+    "outcome": "Queries are automatically directed to the most efficient and accurate retrieval pipeline, reducing latency, token costs, and hallucination rates.",
+    "benchmark_metrics": [
+      "Routing accuracy (precision/recall of pipeline selection)",
+      "Routing latency (must be < 50ms)",
+      "Overall pipeline cost reduction"
+    ],
+    "metadata": {
+      "frameworks_classes": [
+        "Semantic Router (Library)",
+        "LangChain Router Chains",
+        "Custom FastAPI + Embedding Classifier"
+      ],
+      "key_hyperparameters": [
+        "routing_threshold",
+        "embedding_model_for_routing",
+        "number_of_pipelines",
+        "fallback_pipeline"
+      ],
+      "computational_complexity": "O(1) for routing (using optimized ANN or simple dot product), O(Pipeline) for execution",
+      "pros": [
+        "Drastically reduces costs by avoiding expensive LLM calls for simple queries",
+        "Improves accuracy by using specialized pipelines for specific query types",
+        "Highly scalable and modular architecture"
+      ],
+      "cons": [
+        "Requires maintaining multiple specialized pipelines",
+        "Routing errors can lead to completely wrong answers",
+        "Adds a small amount of latency to every request"
+      ],
+      "implementation_guide": "1) Define your specialized RAG pipelines (e.g., SQL RAG, Vector RAG, Graph RAG). 2) Create a set of example utterances for each pipeline. 3) Use the Semantic Router library to embed these examples and create ultra-fast routing boundaries. 4) Implement a fallback mechanism for queries that don't match any route with high confidence.",
+      "dependencies": [
+        "Semantic Router Library or Custom Classifier",
+        "Multiple Specialized RAG Pipelines",
+        "Fast Embedding Model"
+      ],
+      "related_algorithms": [
+        "Agentic RAG",
+        "Advanced RAG"
+      ],
+      "model_specific_optimizations": {
+        "deepseek": "DeepSeek-V3's function calling can act as the semantic router, dynamically selecting the correct RAG sub-pipeline based on query intent with high accuracy.",
+        "qwen": "Qwen2.5-7B can be fine-tuned as an ultra-fast, low-latency semantic router to classify queries before they hit the heavier RAG pipelines.",
+        "kimi": "Kimi can act as the final synthesis engine, receiving the structured outputs from the various routed RAG pipelines and combining them seamlessly.",
+        "z_ai": "GLM-4's fast inference makes it ideal for the routing layer, ensuring the query classification adds negligible latency to the overall pipeline."
+      },
+      "references": [
+        "Semantic Router Documentation",
+        "LangChain Documentation: Router Chains"
+      ],
+      "code_snippet": "from semantic_router import Route, RouteLayer\nfrom semantic_router.encoders import FastEmbedEncoder\n\n# Define routes for different pipelines\nsql_route = Route(name=\"sql_query\", utterances=[\"What is the total revenue?\", \"Show me the top 5 users\"])\nvector_route = Route(name=\"doc_search\", utterances=[\"What is the return policy?\", \"How does the algorithm work?\"])\n\nencoder = FastEmbedEncoder()\nrl = RouteLayer(encoder=encoder, routes=[sql_route, vector_route])\n\n# Route the query\nquery = \"What is the total revenue for Q3?\"\nroute_name = rl(query).name # Returns 'sql_query'",
+      "maturity_level": "Production-Ready"
+    },
+    "index": 20
+  }
+]
