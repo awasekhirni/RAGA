@@ -1,0 +1,117 @@
+{
+  "meta": {
+    "provider": "openai",
+    "api": "POST /v1/chat/completions",
+    "wire_shape": "ChatCompletion object returned by client.chat.completions.create",
+    "pinned_sdk": "openai>=1.40,<3",
+    "recorded": {
+      "source": "OpenAI API reference wire format (chat.completion object)",
+      "date": "2026-11-03",
+      "refresh_policy": "Re-record on every OpenAI SDK major/minor bump; the envelope contract test fails loudly on field drift so stubs can never silently diverge from the wire."
+    }
+  },
+  "response": {
+    "id": "chatcmpl-B9cKx3Qn7Example000111222333",
+    "object": "chat.completion",
+    "created": 1762147200,
+    "model": "gpt-4o-2024-08-06",
+    "system_fingerprint": "fp_bench_6789",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": null,
+          "tool_calls": [
+            {
+              "id": "call_B9cExampleToolCall01",
+              "type": "function",
+              "function": {
+                "name": "RootCauseAnalysisTrace",
+                "arguments": "{\"problem_statement\": \"Checkout error rate spiked to 4.2% last Tuesday between 14:00-16:00 UTC\", \"why_1\": \"Payment gateway returned 502s\", \"why_2\": \"Gateway connection pool saturated\", \"why_3\": \"Pool max was left at 10 after last deploy\", \"why_4\": \"Deploy checklist omitted pool sizing review\", \"why_5\": \"No automated capacity check exists in CI\", \"validated_root_cause\": \"Under-provisioned gateway connection pool after deploy\", \"systemic_countermeasure\": \"Add capacity-review gate to deploy checklist and CI check\", \"confidence\": 0.88}"
+              }
+            }
+          ]
+        },
+        "logprobs": null,
+        "finish_reason": "tool_calls"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 312,
+      "completion_tokens": 98,
+      "total_tokens": 410
+    }
+  },
+  "expected": {
+    "tool_name": "RootCauseAnalysisTrace",
+    "arguments": {
+      "problem_statement": "Checkout error rate spiked to 4.2% last Tuesday between 14:00-16:00 UTC",
+      "why_1": "Payment gateway returned 502s",
+      "why_2": "Gateway connection pool saturated",
+      "why_3": "Pool max was left at 10 after last deploy",
+      "why_4": "Deploy checklist omitted pool sizing review",
+      "why_5": "No automated capacity check exists in CI",
+      "validated_root_cause": "Under-provisioned gateway connection pool after deploy",
+      "systemic_countermeasure": "Add capacity-review gate to deploy checklist and CI check",
+      "confidence": 0.88
+    },
+    "finish_reason": "tool_calls",
+    "usage": {"prompt_tokens": 312, "completion_tokens": 98, "total_tokens": 410}
+  },
+  "variants": [
+    {
+      "name": "no_tool_call_degradation",
+      "response": {
+        "id": "chatcmpl-B9cKx3Qn7Example000111222334",
+        "object": "chat.completion",
+        "created": 1762147201,
+        "model": "gpt-4o-2024-08-06",
+        "system_fingerprint": "fp_bench_6789",
+        "choices": [
+          {
+            "index": 0,
+            "message": {"role": "assistant", "content": "I would rather answer in free text today."},
+            "logprobs": null,
+            "finish_reason": "stop"
+          }
+        ],
+        "usage": {"prompt_tokens": 301, "completion_tokens": 12, "total_tokens": 313}
+      },
+      "expect": {"error": "LLMResponseError"}
+    },
+    {
+      "name": "tool_call_arguments_not_json",
+      "response": {
+        "id": "chatcmpl-B9cKx3Qn7Example000111222335",
+        "object": "chat.completion",
+        "created": 1762147202,
+        "model": "gpt-4o-2024-08-06",
+        "system_fingerprint": "fp_bench_6789",
+        "choices": [
+          {
+            "index": 0,
+            "message": {
+              "role": "assistant",
+              "content": null,
+              "tool_calls": [
+                {
+                  "id": "call_B9cExampleToolCall02",
+                  "type": "function",
+                  "function": {
+                    "name": "RootCauseAnalysisTrace",
+                    "arguments": "{\"problem_statement\": \"truncated\""
+                  }
+                }
+              ]
+            },
+            "logprobs": null,
+            "finish_reason": "tool_calls"
+          }
+        ],
+        "usage": {"prompt_tokens": 300, "completion_tokens": 40, "total_tokens": 340}
+      },
+      "expect": {"error": "LLMAdapterError"}
+    }
+  ]
+}

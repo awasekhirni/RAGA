@@ -1,0 +1,40 @@
+# C.A.S.E. engine — local serving stack (G16).
+#
+#   docker compose up --build
+#   curl -s localhost:8000/health
+#   curl -s -X POST localhost:8000/sessions \
+#        -H 'content-type: application/json' \
+#        -d '{"query": "Dashboard shows stale data"}'
+#   curl -s localhost:8000/ledger/verify
+#
+# The audit ledger, result store and escalation handoffs all land on
+# the `case-data` volume so evidence survives restarts.
+
+services:
+  engine:
+    build: .
+    image: case-engine:latest
+    ports:
+      - "8000:8000"
+    environment:
+      # Provider wiring (mock = fully offline demo). For real providers:
+      #   CASE_ENGINE_PROVIDER=openai + your key manager of choice.
+      CASE_ENGINE_PROVIDER: "mock"
+      # Configuration file overrides env defaults when mounted:
+      #   - ./config.json:/app/config.json:ro
+      #   CASE_ENGINE_CONFIG: "/app/config.json"
+    volumes:
+      - case-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2).status == 200 else 1)"
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+volumes:
+  case-data:

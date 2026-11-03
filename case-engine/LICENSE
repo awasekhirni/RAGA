@@ -1,0 +1,31 @@
+C.A.S.E. — Cognitive Architectural Scaffolding & Enforcement Engine
+Copyright (c) 2024-2026 Syed Awase Khirni / SycliQ Geospatial
+
+Dual-License
+
+1. Open-Source License (Apache-2.0)
+-----------------------------------
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+2. Commercial License
+---------------------
+For proprietary, on-premise, or regulated-industry use (financial
+services, healthcare, government) where Apache-2.0 terms are not
+acceptable, a commercial license with warranty, indemnification and
+SLA support is available from the author.
+
+3. Third-Party Notice
+---------------------
+This engine is provider-agnostic. OpenAI, Anthropic, Ollama, vLLM and
+LangGraph are referenced through optional, lazily-imported adapters and
+remain under their respective licenses.

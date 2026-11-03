@@ -1,0 +1,95 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "case-engine"
+version = "2.4.0"
+description = "C.A.S.E. — Cognitive Architectural Scaffolding & Enforcement Engine: deterministic, schema-gated mental-model reasoning for any LLM."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0 OR Commercial (dual-licensed, see LICENSE)" }
+authors = [{ name = "Syed Awase Khirni" }]
+keywords = [
+  "agentic-ai", "mental-models", "pydantic", "deterministic-ai",
+  "reasoning-engine", "guardrails", "langgraph", "audit-trail",
+]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+  "pydantic>=2.5",
+]
+
+[project.optional-dependencies]
+openai = ["openai>=1.40"]
+anthropic = ["anthropic>=0.34"]
+langgraph = ["langgraph>=0.2"]
+crypto = ["cryptography>=42"]
+server = ["fastapi>=0.110", "uvicorn>=0.29"]
+all = ["openai>=1.40", "anthropic>=0.34", "langgraph>=0.2", "cryptography>=42", "fastapi>=0.110", "uvicorn>=0.29"]
+dev = ["pytest>=8.0", "pytest-cov>=4.0", "ruff>=0.5", "mypy>=1.10", "hypothesis>=6.100"]
+
+[project.scripts]
+case-engine = "case_engine.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["case_engine*"]
+
+[tool.setuptools.package-data]
+case_engine = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["docs", "packs"]
+
+[tool.ruff.lint]
+# Curated, high-signal gate: errors (E9), pyflakes (F), invalid escapes (W605),
+# import ordering (I), pyupgrade (UP), and RUF100 (stale noqa).
+select = [
+  "E9",    # syntax / runtime-level errors
+  "F",     # pyflakes: undefined names, unused imports/vars
+  "W605",  # invalid escape sequences
+  "I",     # import sorting
+  "UP",    # pyupgrade (3.11+ idioms)
+  "RUF100",# unused noqa directives
+]
+ignore = [
+  # UP042 (str,Enum -> StrEnum): audit event types and domains deliberately
+  # use the (str, Enum) mixin; StrEnum changes str()/f-string output, which
+  # would alter audit JSON and log payloads.  Revisit only with a migration.
+  "UP042",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Local imports inside test functions and CLI handlers are deliberate
+# (lazy provider/SDK loading, test isolation).
+"tests/*" = ["PLC0415"]
+"case_engine/cli.py" = ["PLC0415"]
+"examples/*" = ["PLC0415"]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+no_implicit_optional = true
+check_untyped_defs = true
+
+# G28: canonical community mutation toolchain — same scope as the
+# bundled deterministic runner in tools/mutation_run.py (run once per
+# release, not per PR; see docs/MUTATION_BASELINE.md).
+[tool.mutmut]
+paths_to_mutate = ["case_engine/validation/rules.py", "case_engine/enforcement/gate.py"]
+tests_dir = ["tests/unit"]

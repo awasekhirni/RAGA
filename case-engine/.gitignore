@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# C.A.S.E. runtime artifacts
+case_audit.jsonl
+case_audit.sqlite3
+*.ledger.jsonl
+
+# G28 mutation tooling artifacts
+mutants/
+.mutmut-cache/
+mutmut-cache/

@@ -1,0 +1,81 @@
+{
+  "meta": {
+    "provider": "anthropic",
+    "api": "POST /v1/messages",
+    "wire_shape": "Message object returned by client.messages.create",
+    "pinned_sdk": "anthropic>=0.34,<1",
+    "recorded": {
+      "source": "Anthropic Messages API reference wire format (Message object)",
+      "date": "2026-11-03",
+      "refresh_policy": "Re-record on every Anthropic SDK major/minor bump; the envelope contract test fails loudly on field drift so stubs can never silently diverge from the wire."
+    }
+  },
+  "response": {
+    "id": "msg_01BenchExampleMessage0000001",
+    "type": "message",
+    "role": "assistant",
+    "model": "claude-sonnet-4-20250514",
+    "content": [
+      {
+        "type": "text",
+        "text": "Generating the requested root-cause trace."
+      },
+      {
+        "type": "tool_use",
+        "id": "toolu_01BenchExampleToolUse01",
+        "name": "RootCauseAnalysisTrace",
+        "input": {
+          "problem_statement": "Checkout error rate spiked to 4.2% last Tuesday between 14:00-16:00 UTC",
+          "why_1": "Payment gateway returned 502s",
+          "why_2": "Gateway connection pool saturated",
+          "why_3": "Pool max was left at 10 after last deploy",
+          "why_4": "Deploy checklist omitted pool sizing review",
+          "why_5": "No automated capacity check exists in CI",
+          "validated_root_cause": "Under-provisioned gateway connection pool after deploy",
+          "systemic_countermeasure": "Add capacity-review gate to deploy checklist and CI check",
+          "confidence": 0.88
+        }
+      }
+    ],
+    "stop_reason": "tool_use",
+    "stop_sequence": null,
+    "usage": {
+      "input_tokens": 2095,
+      "output_tokens": 503
+    }
+  },
+  "expected": {
+    "tool_name": "RootCauseAnalysisTrace",
+    "arguments": {
+      "problem_statement": "Checkout error rate spiked to 4.2% last Tuesday between 14:00-16:00 UTC",
+      "why_1": "Payment gateway returned 502s",
+      "why_2": "Gateway connection pool saturated",
+      "why_3": "Pool max was left at 10 after last deploy",
+      "why_4": "Deploy checklist omitted pool sizing review",
+      "why_5": "No automated capacity check exists in CI",
+      "validated_root_cause": "Under-provisioned gateway connection pool after deploy",
+      "systemic_countermeasure": "Add capacity-review gate to deploy checklist and CI check",
+      "confidence": 0.88
+    },
+    "finish_reason": "tool_use",
+    "usage": {"prompt_tokens": 2095, "completion_tokens": 503, "total_tokens": 2598}
+  },
+  "variants": [
+    {
+      "name": "no_tool_use_degradation",
+      "response": {
+        "id": "msg_01BenchExampleMessage0000002",
+        "type": "message",
+        "role": "assistant",
+        "model": "claude-sonnet-4-20250514",
+        "content": [
+          {"type": "text", "text": "Answering in prose despite the forced tool choice."}
+        ],
+        "stop_reason": "end_turn",
+        "stop_sequence": null,
+        "usage": {"input_tokens": 2080, "output_tokens": 24}
+      },
+      "expect": {"error": "LLMResponseError"}
+    }
+  ]
+}
